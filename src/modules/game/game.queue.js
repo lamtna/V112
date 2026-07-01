@@ -1,23 +1,34 @@
 'use strict';
+
 /**
  * GameQueue — per-session Bull queue for sequential event processing.
- *
- * If Redis is unavailable, falls back to direct execution (no queue).
- * This ensures the app works in development without Redis.
+ * FIX: safe Redis integration with Upstash (no URL parsing issues)
  */
+
 const logger = require('../../config/logger');
-const { redisUrl } = require('../../config');
+const { getRedis } = require('../../config/database');
 
 let Bull;
-try { Bull = require('bull'); } catch { Bull = null; }
+
+try {
+  Bull = require('bull');
+} catch {
+  Bull = null;
+}
 
 const queues = new Map();
 
 function getQueue(sessionId) {
   if (!Bull) return null;
+
   if (!queues.has(sessionId)) {
     try {
-      const q = new Bull(`game:${sessionId}`, redisUrl, {
+      const q = new Bull(`game:${sessionId}`, {
+        createClient: function () {
+          // 🔥 يستخدم نفس Redis connection (حل المشكلة النهائي)
+          return getRedis().duplicate();
+        },
+
         defaultJobOptions: {
           removeOnComplete: 50,
           removeOnFail: 20,
@@ -25,28 +36,38 @@ function getQueue(sessionId) {
           backoff: { type: 'fixed', delay: 500 },
         },
       });
+
       q.on('failed', (job, err) => {
-        logger.error('Queue job failed', { sessionId, jobId: job.id, err: err.message });
+        logger.error('Queue job failed', {
+          sessionId,
+          jobId: job.id,
+          err: err.message
+        });
       });
+
       queues.set(sessionId, q);
+
     } catch (err) {
-      logger.warn('Could not create Bull queue — falling back to direct execution', { err: err.message });
+      logger.warn('Could not create Bull queue — fallback mode', {
+        err: err.message
+      });
+
       return null;
     }
   }
+
   return queues.get(sessionId) || null;
 }
 
 class GameQueue {
   /**
-   * Enqueue a game action.
-   * If Bull/Redis unavailable, executes handler directly (sequential in process).
+   * Enqueue a game action
    */
   static async enqueue(sessionId, action, payload, handler) {
     const queue = getQueue(sessionId);
 
     if (!queue) {
-      // Fallback: direct execution
+      // fallback بدون Redis
       return handler({ action, payload, sessionId });
     }
 
@@ -70,10 +91,13 @@ class GameQueue {
   static async getDepth(sessionId) {
     const queue = queues.get(sessionId);
     if (!queue) return 0;
+
     try {
       const counts = await queue.getJobCounts();
       return counts.waiting + counts.active;
-    } catch { return 0; }
+    } catch {
+      return 0;
+    }
   }
 }
 
