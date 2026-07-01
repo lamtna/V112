@@ -1,0 +1,44 @@
+{
+  "name": "quizgame-backend",
+  "version": "2.0.0",
+  "type": "commonjs",
+  "description": "QuizGame SaaS — Real-time quiz platform backend",
+  "scripts": {
+    "start": "NODE_ENV=production node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed": "node scripts/seed.js",
+    "test": "jest --testPathPattern=tests --forceExit",
+    "test:unit": "jest --testPathPattern=tests/unit --forceExit",
+    "test:integration": "jest --testPathPattern=tests/integration --forceExit",
+    "load-test": "node tests/load/load-test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "bull": "^4.11.3",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^6.7.0",
+    "helmet": "^7.0.0",
+    "ioredis": "^5.3.2",
+    "joi": "^17.9.2",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.3.1",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "jest": "^29.6.0",
+    "mongodb-memory-server": "^9.1.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  }
+}
